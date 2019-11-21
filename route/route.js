@@ -1,5 +1,5 @@
 const router = require('express-promise-router')();
-
+const {validateQuestionsAnswersInsertin} = require('../validate/validate')
 const User   = require('../models/user');
 const Survey = require('../models/survey');
 
@@ -123,4 +123,68 @@ router.get('/survey',async(req,res,next)=>{
         rightAnswer,
     })
  })
+
+ router.post('/insertServy',async(req,res,next)=>{
+
+    const {error} = validateQuestionsAnswersInsertin(req.body);
+    if(error){
+        return res.status(400).send(error.details[0].message);
+    }
+    const survey = await req.user.createSurvey({
+       title:req.body.survey.title,
+       description:req.body.survey.description
+    });
+
+    const Question = await survey.createQuestion({
+       title:req.body.question
+    });
+   
+    for(let i=0; i< req.body.answers.length;i++){
+    const createAnswers  = await Question.createAnswer({
+        title:req.body.answers[i].title
+    });
+    const RightAnswer  = await Question.createRightAnswer({
+        title:req.body.rightAnswer
+    });
+  }
+  res.status(200).send({
+   success:true,
+   message:'your Servey has been inserted'
+ });
+
+});
+
+router.get('/insertServy/:surveyId/:questionId',async(req,res,next)=>{
+   
+    if(req.params.surveyId <= 0){
+        return res.status(400).send("The Id of survey should be Greater than Zero");
+     }
+     if(req.params.questinId <= 0){
+         return res.status(400).send("The Id of question survey should be Greater than Zero");
+     } 
+    const surveyId = req.params.surveyId -1;
+    const questionId = req.params.questionId -1;
+   
+    const surveys = await req.user.getSurveys();
+    if(surveys.length === 0){
+        return res.status(400).send("the survey is empty")
+    }
+    const survey  = surveys[surveyId];
+    const questions = await survey.getQuestions();
+    if(questions.length === 0){
+        return res.status(400).send("No question Found");
+    }
+    const question  = questions[questionId];
+    const answers   = await question.getAnswers();
+    
+    res.status(200).send({
+       success:true,
+       message:"succeed",
+       survey:survey,
+       question:question,
+       availableAnswers:answers
+    })
+});
+
+
 module.exports = router;
